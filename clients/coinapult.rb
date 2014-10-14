@@ -26,15 +26,15 @@ class CoinapultClient
       @key = credentials[:key]
       @secret = credentials[:secret]
     end
-    _setup_ECC_pair([ecc[:privkey], ecc[:pubkey]]) if ecc
+    _setup_ecc_pair([ecc[:privkey], ecc[:pubkey]]) if ecc
   end
 
-  def export_ECC
+  def export_ecc
     [@ecc[:privkey].to_pem,
      @ecc[:pubkey].to_pem]
   end
 
-  def _setup_ECC_pair(keypair)
+  def _setup_ecc_pair(keypair)
     if keypair.nil?
       privkey = OpenSSL::PKey::EC.new(ECC_CURVE)
       privkey.generate_key
@@ -81,7 +81,7 @@ class CoinapultClient
     resp
   end
 
-  def _send_ECC(url, values, new_account: false, sign: true)
+  def _send_ecc(url, values, new_account: false, sign: true)
     headers = {}
 
     if !new_account
@@ -94,17 +94,17 @@ class CoinapultClient
     values['timestamp'] = Time.now.to_i
 
     data = Base64.urlsafe_encode64(JSON.generate(values))
-    headers['cpt-ecc-sign'] = generate_ECC_sign(data, @ecc[:privkey])
+    headers['cpt-ecc-sign'] = generate_ecc_sign(data, @ecc[:privkey])
     response = RestClient.post("#{@baseURL}#{url}", { data: data }, headers)
     _format_response(response)
   end
 
-  def _receive_ECC(resp)
+  def _receive_ecc(resp)
     if resp['sign'].nil? || resp['data'].nil?
       fail CoinapultErrorECC, 'Invalid ECC message'
     end
     # Check signature.
-    unless verify_ECC_sign(resp['sign'], resp['data'], ECC_COINAPULT_PUBKEY)
+    unless verify_ecc_sign(resp['sign'], resp['data'], ECC_COINAPULT_PUBKEY)
       fail CoinapultErrorECC, 'Invalid ECC signature'
     end
 
@@ -113,7 +113,7 @@ class CoinapultClient
 
   def send_to_coinapult(endpoint, values, sign: false, **kwargs)
     if sign && @authmethod == 'ecc'
-      method = self.method(:_send_ECC)
+      method = self.method(:_send_ecc)
     else
       method = self.method(:_send_request)
     end
@@ -125,10 +125,10 @@ class CoinapultClient
                      **kwargs)
     url = '/api/account/create'
 
-    _setup_ECC_pair(nil) if create_local_keys
+    _setup_ecc_pair(nil) if create_local_keys
 
     pub_pem = @ecc_pub_pem
-    result = _receive_ECC(_send_ECC(url, kwargs, new_account: true))
+    result = _receive_ecc(_send_ecc(url, kwargs, new_account: true))
     unless result['success'].nil?
       if result['success'] != OpenSSL::Digest::SHA256.hexdigest(pub_pem)
         fail CoinapultErrorECC, 'Unexpected public key'
@@ -146,7 +146,7 @@ proceeding with the account creation. #{result['info']}"
 
     pubhash = @ecc_pub_hash if pubhash.nil?
     values = { agree: agree, hash: pubhash }
-    _receive_ECC(_send_ECC(url, values, new_account: true))
+    _receive_ecc(_send_ecc(url, values, new_account: true))
   end
 
   def receive(amount: 0, out_amount: 0, currency: 'BTC', out_currency: nil,
@@ -330,7 +330,7 @@ proceeding with the account creation. #{result['info']}"
   def authenticate_callback(recv_key, recv_sign, recv_data)
     if recv_key.nil?
       # ECC
-      return verify_ECC_sign(recv_sign, recv_data, ECC_COINAPULT_PUBKEY)
+      return verify_ecc_sign(recv_sign, recv_data, ECC_COINAPULT_PUBKEY)
     end
 
     # HMAC
@@ -352,7 +352,7 @@ class CoinapultError < StandardError; end
 
 class CoinapultErrorECC < CoinapultError; end
 
-def generate_ECC_sign(data, privkey)
+def generate_ecc_sign(data, privkey)
   curve = privkey.group.curve_name
   if curve != ECC_CURVE
     fail CoinapultErrorECC, "key on curve #{curve}, expected #{ECC_CURVE}"
@@ -363,7 +363,7 @@ def generate_ECC_sign(data, privkey)
   "#{sign.value[0].value.to_s(16)}#{sign.value[1].value.to_s(16)}"
 end
 
-def verify_ECC_sign(signstr, origdata, pubkey)
+def verify_ecc_sign(signstr, origdata, pubkey)
   curve = pubkey.group.curve_name
   if curve != ECC_CURVE
     fail CoinapultErrorECC, "key on curve #{curve}, expected #{ECC_CURVE}"
