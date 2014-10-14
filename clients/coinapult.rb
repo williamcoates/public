@@ -176,7 +176,7 @@ proceeding with the account creation. #{result['info']}"
     send_to_coinapult(url, values, sign: true)
   end
 
-  def send(amount, address, out_amount: 0, currency: 'BTC', typ: 'bitcoin',
+  def send(address, amount: 0, out_amount: 0, currency: 'BTC', typ: 'bitcoin',
            callback: '')
     url = '/api/t/send/'
 
@@ -237,7 +237,7 @@ proceeding with the account creation. #{result['info']}"
     send_to_coinapult(url, values, sign: true)
   end
 
-  def lock(amount, out_amount: 0, currency: 'USD', callback: nil)
+  def lock(amount: 0, out_amount: 0, currency: 'USD', callback: nil)
     url = '/api/t/lock/'
 
     if amount > 0 && out_amount > 0
@@ -258,7 +258,7 @@ proceeding with the account creation. #{result['info']}"
     send_to_coinapult(url, values, sign: true)
   end
 
-  def unlock(amount, address, out_amount: 0, currency: 'USD', callback: nil)
+  def unlock(amount: 0, address: nil, out_amount: 0, currency: 'USD', callback: nil)
     url = '/api/t/unlock/'
 
     if amount > 0 && out_amount > 0
